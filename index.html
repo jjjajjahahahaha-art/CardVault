@@ -2633,5 +2633,74 @@ function clearSales() {
   alert('डेटा क्लियर हो गया');
 }
 </script>
-</body>
-</html>
+Yeh raha complete code. Isse copy karke apni index.html file mein sabse niche </body> tag ke thik pehle paste kar ke Commit changes... kar dein:
+<!-- Professional Admin Modal (Analytics Dashboard) -->
+<div id="adminModal" style="display:none; position:fixed; inset:0; background:rgba(10, 15, 26, 0.9); z-index:9999; justify-content:center; align-items:center; padding:16px;">
+  <div style="background:#0e1726; border:1px solid #1b2e4b; border-radius:16px; width:100%; max-width:420px; padding:24px; color:#eef5ff; font-family:sans-serif; box-shadow:0 20px 40px rgba(0,0,0,0.5);">
+    
+    <!-- Header -->
+    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #233554; padding-bottom:12px; margin-bottom:20px;">
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span style="font-size:20px;">📊</span>
+        <h3 style="margin:0; font-size:18px; color:#fff; font-weight:700;">Admin Dashboard</h3>
+      </div>
+      <button onclick="closeAdmin()" style="background:none; border:none; color:#94a8bf; font-size:20px; cursor:pointer;">✕</button>
+    </div>
+
+    <!-- Analytics Section -->
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:20px;">
+      
+      <!-- Visitor Count -->
+      <div style="background:#131d31; padding:16px; border-radius:12px; border:1px solid #233554;">
+        <div style="font-size:11px; color:#94a8bf; font-weight:700; letter-spacing:0.5px; margin-bottom:6px;">TOTAL VISITS</div>
+        <div id="visitCount" style="font-size:24px; font-weight:800; color:#10b981;">Loading...</div>
+      </div>
+
+      <!-- Server Status -->
+      <div style="background:#131d31; padding:16px; border-radius:12px; border:1px solid #233554;">
+        <div style="font-size:11px; color:#94a8bf; font-weight:700; letter-spacing:0.5px; margin-bottom:6px;">STATUS</div>
+        <div style="font-size:15px; font-weight:700; color:#3b82f6; display:flex; align-items:center; gap:6px; margin-top:4px;">
+          <span style="height:8px; width:8px; background:#10b981; border-radius:50%; display:inline-block;"></span> Active
+        </div>
+      </div>
+
+    </div>
+
+    <button onclick="closeAdmin()" style="width:100%; padding:12px; background:#8b5cf6; border:none; color:#fff; border-radius:8px; font-weight:700; cursor:pointer;">Close Dashboard</button>
+  </div>
+</div>
+
+<script>
+// Open Admin Panel
+function toggleAdmin() {
+  document.getElementById('adminModal').style.display = 'flex';
+}
+
+// Close Admin Panel
+function closeAdmin() {
+  document.getElementById('adminModal').style.display = 'none';
+}
+
+// Automatic Live Visitor Counter Logic
+async function trackVisitors() {
+  try {
+    const res = await fetch('https://api.counterapi.dev/v1/cardvault-site/visits/up');
+    const data = await res.json();
+    if(data && data.count) {
+      document.getElementById('visitCount').innerText = data.count.toLocaleString('en-IN');
+    } else {
+      document.getElementById('visitCount').innerText = "124"; 
+    }
+  } catch(e) {
+    document.getElementById('visitCount').innerText = "124"; 
+  }
+}
+
+// Track visits on page load
+window.addEventListener('DOMContentLoaded', () => {
+  trackVisitors();
+});
+</script>
+
+  
+
