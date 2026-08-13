@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="hi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#05070d">
+<title>JARVIS • Voice Assistant</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#05070d;color:#eef4ff;font-family:system-ui,-apple-system,Segoe UI,sans-serif}
+.wrap{max-width:720px;margin:auto;padding:18px}.card{background:linear-gradient(145deg,#101522,#080b12);border:1px solid #263044;border-radius:24px;padding:22px;box-shadow:0 18px 60px #0008}
+h1{margin:0;font-size:34px;letter-spacing:2px}.sub{color:#93a1b8;margin:5px 0 20px}
+.orb{width:150px;height:150px;border-radius:50%;margin:20px auto;display:grid;place-items:center;background:radial-gradient(circle,#69d9ff 0 8%,#1475a8 20%,#071d31 55%,#03060b 70%);box-shadow:0 0 35px #23bfff66,inset 0 0 35px #4bd8ff33}
+.orb.listening{animation:pulse 1s infinite}@keyframes pulse{50%{transform:scale(1.07);box-shadow:0 0 65px #23bfffaa}}
+button{border:0;border-radius:14px;padding:14px 18px;font-weight:700;cursor:pointer}.primary{width:100%;background:#55d8ff;color:#03101a;font-size:17px}.secondary{background:#151d2b;color:#dce8ff}
+.row,.grid{display:grid;gap:10px;margin-top:10px}.row{grid-template-columns:1fr 1fr}.grid{grid-template-columns:repeat(2,1fr)}
+.action{background:#111927;color:#e9f2ff;text-align:left}.status{padding:12px;border-radius:14px;background:#0d1320;color:#a9bad2;margin:14px 0}.log{max-height:280px;overflow:auto;display:flex;flex-direction:column;gap:8px}
+.msg{padding:11px 13px;border-radius:13px;background:#0e1522}.you{border-left:3px solid #55d8ff}.jarvis{border-left:3px solid #8d7cff}.label{font-size:12px;color:#71829c;margin-bottom:3px}
+small{color:#71829c}
+</style>
+</head>
+<body>
+<div id="setupPanel" style="display:none;position:fixed;inset:0;background:#05070d;color:#eef4ff;z-index:99998;overflow:auto;padding:18px">
+<div style="max-width:720px;margin:0 auto;background:#101522;border:1px solid #263044;border-radius:24px;padding:22px">
+<h2>⚙️ JARVIS Setup</h2><p style="color:#93a1b8">Boss, पहले उपलब्ध permissions तैयार करें।</p>
+<div id="permList" style="display:grid;gap:10px;margin:18px 0"></div>
+<button type="button" id="setupMic" class="primary" style="touch-action:manipulation;position:relative;z-index:100000">🎙️ Microphone Allow करें</button>
+<button type="button" id="setupScreen" class="primary" style="margin-top:10px;touch-action:manipulation;position:relative;z-index:100000">📸 Screen Capture Allow करें</button>
+<button type="button" id="setupNotify" class="primary" style="margin-top:10px;touch-action:manipulation;position:relative;z-index:100000">🔔 Notifications Allow करें</button>
+<button type="button" id="setupStart" class="primary" style="margin-top:10px;background:#58e69b;touch-action:manipulation;position:relative;z-index:100000">🟢 START JARVIS</button>
+<p style="color:#71829c;font-size:12px">WhatsApp, YouTube, Spotify और Calling के लिए website supported links खोल सकती है। Android की private app permissions website से एक साथ grant नहीं की जा सकतीं।</p>
+</div></div>
+<div id="loginGate" style="position:fixed;inset:0;background:#05070d;z-index:2147483647;display:grid;place-items:center;padding:20px;pointer-events:auto;touch-action:manipulation">
+  <form id="loginForm" autocomplete="off" style="width:min(420px,100%);background:#101522;border:1px solid #263044;border-radius:24px;padding:24px;box-shadow:0 18px 60px #0008">
+    <h2 style="margin:0 0 8px">🔐 JARVIS</h2>
+    <p style="color:#93a1b8;margin:0 0 18px">Boss password डालकर JARVIS शुरू करें।</p>
+    <input id="passInput" type="password" placeholder="Password"
+      onkeydown="if(event.key==='Enter'){event.preventDefault();unlockJarvis();}"
+      style="width:100%;box-sizing:border-box;padding:15px;border-radius:12px;border:1px solid #33405a;background:#080c14;color:#fff;margin-bottom:10px;font-size:16px;touch-action:manipulation">
+    <button id="unlockBtn" type="button" onclick="unlockJarvis()"
+      style="display:block;width:100%;background:#55d8ff;color:#03101a;padding:15px;border:0;border-radius:12px;font-weight:700;font-size:16px;touch-action:manipulation;cursor:pointer">
+      🔓 Unlock JARVIS
+    </button>
+    <div id="passError" style="color:#ff7d7d;margin-top:10px;display:none">गलत password।</div>
+  </form>
+</div>
+<div class="wrap"><div class="card">
+<h1>JARVIS</h1>
+<div class="sub">🎙️ “Jarvis” या “Baby” बोलकर command दो • Assistant आपको “Boss” कहेगा</div>
+<div id="orb" class="orb">🎙️</div>
+<button id="startJarvisBtn" class="primary">🟢 JARVIS START करें</button>
+<button id="listenBtn" class="primary" style="display:none">🎙️ सुनना शुरू करें</button>
+<div id="status" class="status">तैयार हूँ। पहले बटन दबाकर microphone अनुमति दें।</div>
+
+<div class="grid">
+<button class="action" data-cmd="Jarvis YouTube पर Arijit Singh का गाना चलाओ">▶️ YouTube Music</button>
+<button class="action" data-cmd="Jarvis Spotify पर Arijit Singh का गाना चलाओ">🎵 Spotify Music</button>
+<button class="action" data-cmd="Jarvis WhatsApp खोलो">💬 WhatsApp</button>
+<button class="action" data-cmd="Jarvis कॉल करो">📞 कॉल</button>
+<button class="action" data-cmd="Jarvis screenshot लो">📸 Screenshot</button>
+</div>
+<div class="row"><button class="secondary" id="stopBtn">🔇 आवाज़ बंद</button><button class="secondary" id="clearBtn">🧹 चैट साफ</button></div>
+
+<h3>कमांड इतिहास</h3><div id="log" class="log"></div>
+<p><small>🔐 पहली बार microphone permission Allow करनी होगी। Android/Chrome सुरक्षा के कारण website खुद से permissions grant नहीं कर सकती। लगातार listening browser की limits पर निर्भर है; Android/browser background में website को हमेशा microphone देने की गारंटी नहीं देता। WhatsApp की पूरी contact/chat list और दूसरे apps के अंदर स्वतः actions के लिए native Android app + permissions/API की जरूरत होगी।<br><br>महत्वपूर्ण: Voice recognition और screen capture के लिए इस फाइल को HTTPS website पर चलाना बेहतर है। अगर browser microphone अनुमति नहीं देता, नीचे दिया हुआ diagnostic संदेश दिखाई देगा। Screenshot command पर browser screen-capture permission माँगेगा; अनुमति के बिना website फोन की screen capture नहीं कर सकती।</small></p>
+</div></div>
+
+<script>
+const $=id=>document.getElementById(id);
+const statusEl=$("status"),log=$("log"),orb=$("orb"),btn=$("listenBtn");
+let recognition=null,listening=false,speechEnabled=true,autoListen=false,userStopped=false;
+
+function esc(s){return s.replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+function addLog(who,text){const d=document.createElement("div");d.className="msg "+(who==="तुम"?"you":"jarvis");d.innerHTML='<div class="label">'+who+"</div>"+esc(text);log.prepend(d);}
+function speak(text){
+  addLog("JARVIS",text);
+  if(!speechEnabled||!("speechSynthesis"in window))return;
+  speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance(text);
+  u.lang="hi-IN";u.rate=.90;u.pitch=.78;u.volume=1;
+  const voices=speechSynthesis.getVoices?speechSynthesis.getVoices():[];
+  const male=voices.find(v=>/male|david|mark|alex|daniel|rishi/i.test(v.name+" "+v.voiceURI));
+  if(male)u.voice=male;
+  speechSynthesis.speak(u);
+}
+function say(text){statusEl.textContent=text;speak(text);}
+
+
+/*
+  NOTE: This password gate is client-side only. It is not strong security because
+  the password is present in this HTML/JavaScript. For real private access,
+  use Netlify/server-side authentication.
+*/
+
+const permList=document.getElementById("permList");
+function addPerm(name,id,state="Available"){const r=document.createElement("div");r.style="display:flex;justify-content:space-between;padding:12px;background:#0d1320;border:1px solid #263044;border-radius:14px";r.innerHTML="<span>"+name+"</span><span id='"+id+"' style='color:#a9bad2'>"+state+"</span>";permList.appendChild(r);}
+addPerm("🎙️ Microphone","micState","Not allowed"); addPerm("📸 Screen Capture","screenState","On request"); addPerm("🔔 Notifications","notifyState","On request"); addPerm("▶️ YouTube","ytState","Ready"); addPerm("🎵 Spotify","spState","Ready"); addPerm("💬 WhatsApp","waState","Ready"); addPerm("📞 Calling","callState","Ready");
+async function refreshPermissions(){try{if(navigator.permissions){let p=await navigator.permissions.query({name:"microphone"});document.getElementById("micState").textContent=p.state==="granted"?"Allowed":p.state==="denied"?"Blocked":"Not allowed";}}catch(e){} if("Notification"in window){document.getElementById("notifyState").textContent=Notification.permission==="granted"?"Allowed":Notification.permission==="denied"?"Blocked":"Not allowed";}}
+async function requestMic(){try{let s=await navigator.mediaDevices.getUserMedia({audio:true});s.getTracks().forEach(t=>t.stop());document.getElementById("micState").textContent="Allowed";say("Boss, microphone permission मिल गई।");}catch(e){say("Boss, microphone permission नहीं मिली।");}}
+async function requestScreen(){if(!navigator.mediaDevices?.getDisplayMedia){say("Boss, इस browser में screen capture उपलब्ध नहीं है।");return;}try{let s=await navigator.mediaDevices.getDisplayMedia({video:true,audio:false});s.getTracks().forEach(t=>t.stop());document.getElementById("screenState").textContent="Allowed";say("Boss, screen capture permission तैयार है।");}catch(e){say("Boss, screen capture permission रद्द हुई।");}}
+async function requestNotify(){if(!("Notification"in window)){say("Boss, notifications उपलब्ध नहीं हैं।");return;}let r=await Notification.requestPermission();refreshPermissions();say(r==="granted"?"Boss, notifications Allow हो गईं।":"Boss, notification permission नहीं मिली।");}
+document.getElementById("touchTest").onclick=()=>alert("Boss, touch काम कर रहा है।");
+document.getElementById("setupMic").onclick=requestMic;
+document.getElementById("setupScreen").onclick=requestScreen;
+document.getElementById("setupNotify").onclick=requestNotify;
+function startFromSetup(){
+  document.getElementById("setupPanel").style.display="none";
+  jarvisStarted=true;
+  document.getElementById("startJarvisBtn").textContent="🟢 JARVIS ON";
+  document.getElementById("startJarvisBtn").disabled=true;
+  if(!recognition) setup();
+  if(recognition){
+    startListening();
+    say("Yes Boss, JARVIS तैयार है। अब command बोलिए।");
+  }else{
+    say("Boss, JARVIS ON है। इस browser में voice recognition support नहीं है।");
+  }
+}
+
+const JARVIS_PASSWORD = "Boss@1234";
+let jarvisStarted = false;
+
+function unlockJarvis(){
+  const value=$("passInput").value;
+  if(value!==JARVIS_PASSWORD){$("passError").style.display="block";return;}
+  $("passError").style.display="none";
+  $("loginGate").style.display="none";
+  $("setupPanel").style.display="block";
+  refreshPermissions();
+}
+
+function startListening(){
+  if(!recognition) return;
+  userStopped = false;
+  autoListen = true;
+  try{ recognition.start(); }
+  catch(e){}
+}
+
+function setup(){
+ const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+ if(!SR){
+  statusEl.textContent="⚠️ इस browser में Voice Recognition उपलब्ध नहीं है। Chrome/Android supported browser में HTTPS पर खोलें।";
+  btn.disabled=false;
+  return;
+ }
+ recognition=new SR();recognition.lang="hi-IN";recognition.continuous=false;recognition.interimResults=false;
+ recognition.onstart=()=>{listening=true;orb.classList.add("listening");btn.textContent="🛑 सुनना बंद करें";statusEl.textContent="🎙️ सुन रहा हूँ… अब बोलो।"};
+ recognition.onresult=e=>{const text=e.results[0][0].transcript;handle(text);};
+ recognition.onerror=e=>{
+  listening=false;orb.classList.remove("listening");btn.textContent="🎙️ सुनना शुरू करें";
+  const map={notallowed:"❌ Microphone permission बंद है। Chrome Settings में Microphone Allow करो।",denied:"❌ Microphone permission denied है।",audio_capture:"❌ Microphone उपलब्ध नहीं है।",network:"❌ Voice service/network समस्या है।"};
+  statusEl.textContent=map[e.error]||("❌ Voice error: "+e.error);
+ };
+ recognition.onend=()=>{
+  listening=false;orb.classList.remove("listening");
+  if(autoListen && !userStopped){
+    btn.textContent="🛑 लगातार सुन रहा हूँ";
+    statusEl.textContent="🎙️ Boss, मैं तैयार हूँ… “Jarvis” या “Baby” बोलिए।";
+    setTimeout(()=>{try{recognition.start()}catch(e){}},350);
+  }else{
+    btn.textContent="🎙️ सुनना शुरू करें";
+  }
+};
+}
+
+async function takeScreenshot(){
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia){
+    say("Boss, इस browser में screen capture उपलब्ध नहीं है। Chrome का latest version इस्तेमाल करें।");
+    return;
+  }
+
+  try{
+    say("Boss, screen capture की अनुमति दीजिए।");
+
+    const stream = await navigator.mediaDevices.getDisplayMedia({
+      video: true,
+      audio: false
+    });
+
+    const video = document.createElement("video");
+    video.srcObject = stream;
+    video.muted = true;
+    await video.play();
+
+    await new Promise(resolve=>{
+      if(video.readyState >= 2) resolve();
+      else video.onloadedmetadata = resolve;
+    });
+
+    await new Promise(requestAnimationFrame);
+
+    const canvas = document.createElement("canvas");
+    canvas.width = video.videoWidth || 1280;
+    canvas.height = video.videoHeight || 720;
+
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    stream.getTracks().forEach(track=>track.stop());
+
+    canvas.toBlob(blob=>{
+      if(!blob){
+        say("Boss, screenshot तैयार नहीं हो पाया।");
+        return;
+      }
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "JARVIS-Screenshot-" +
+        new Date().toISOString().replace(/[:.]/g,"-") + ".png";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+
+      setTimeout(()=>URL.revokeObjectURL(url), 1500);
+      say("Boss, screenshot ले लिया। PNG file save हो रही है।");
+    }, "image/png");
+
+  }catch(e){
+    if(e && (e.name === "NotAllowedError" || e.name === "AbortError")){
+      say("ठीक है Boss, screen capture permission रद्द कर दी गई।");
+    }else{
+      say("Boss, screenshot नहीं लिया जा सका।");
+    }
+  }
+}
+
+function handle(raw){
+ const text=raw.trim();if(!text)return;addLog("तुम",text);
+ const t=text.toLowerCase();
+ const wake=/jarvis|जार्विस|baby|बेबी/.test(t);
+ if(!wake){say("Boss, पहले Jarvis या Baby बोलो, फिर command दो।");return;}
+ if(/screenshot|screen shot|screen-shot|स्क्रीनशॉट|स्क्रीन शॉट/.test(t)){
+  takeScreenshot();return;
+ }
+ if(/youtube|यूट्यूब/.test(t)){
+  const q=t.replace(/jarvis|जार्विस|baby|बेबी|youtube|यूट्यूब|पर|पे|चलाओ|चलाना|play|प्ले|गाना|song/gi," ").replace(/\s+/g," ").trim()||"music";
+  say("Boss, YouTube पर "+q+" खोज रहा हूँ।");setTimeout(()=>location.href="https://www.youtube.com/results?search_query="+encodeURIComponent(q),600);return;
+ }
+ if(/spotify|स्पॉटिफाई/.test(t)){
+  const q=t.replace(/jarvis|जार्विस|baby|बेबी|spotify|स्पॉटिफाई|पर|पे|चलाओ|चलाना|play|प्ले|गाना|song/gi," ").replace(/\s+/g," ").trim()||"music";
+  say("Boss, Spotify पर "+q+" खोज रहा हूँ।");setTimeout(()=>location.href="https://open.spotify.com/search/"+encodeURIComponent(q),600);return;
+ }
+ if(/whatsapp|व्हाट्सऐप/.test(t)){say("Boss, WhatsApp खोल रहा हूँ।");setTimeout(()=>location.href="https://wa.me/",600);return;}
+ if(/call|कॉल|फोन/.test(t)){
+  const n=prompt("किस नंबर पर कॉल करना है?");if(n){say("Boss, कॉल शुरू कर रहा हूँ।");location.href="tel:"+n.replace(/[^\d+]/g,"");}else say("ठीक है Boss, कॉल रद्द कर दिया।");return;
+ }
+ if(/hello|हैलो|hi|हाय|कैसे हो/.test(t)){say("Yes Boss, मैं तैयार हूँ। अगली command बताइए।");return;}
+ if(/रुको|stop|बंद|चुप/.test(t)){speechSynthesis.cancel();statusEl.textContent="ठीक है।";return;}
+ say("Boss, यह command अभी इस web version में उपलब्ध नहीं है।");
+}
+btn.onclick=()=>{
+ if(!jarvisStarted){say("Boss, पहले JARVIS START करें।");return;}
+ if(!recognition)setup();
+ if(!recognition){statusEl.textContent="⚠️ इस browser में voice recognition उपलब्ध नहीं है।";return;}
+ if(listening){userStopped=true;autoListen=false;recognition.stop();return;}
+ startListening();
+};
+$("stopBtn").onclick=()=>{
+  speechEnabled=false;speechSynthesis.cancel();
+  userStopped=true;autoListen=false;
+  if(recognition && listening) recognition.stop();
+  statusEl.textContent="Voice reply और listening बंद है। ऊपर JARVIS ON है; फिर से सुनने के लिए Start Listening दबाएँ।";
+};
+$("clearBtn").onclick=()=>log.innerHTML="";
+document.querySelectorAll("[data-cmd]").forEach(b=>b.onclick=()=>handle(b.dataset.cmd));
+
+
+$("startJarvisBtn").onclick=()=>{
+  if(jarvisStarted)return;
+  document.getElementById("setupPanel").style.display="block";
+  refreshPermissions();
+};
+
+document.addEventListener("DOMContentLoaded",()=>{
+  const form=document.getElementById("loginForm");
+  if(form)form.addEventListener("submit",e=>{e.preventDefault();unlockJarvis();});
+  const unlock=document.getElementById("unlockBtn");
+  if(unlock)unlock.addEventListener("touchend",e=>{e.preventDefault();unlockJarvis();},{passive:false});
+  if("speechSynthesis"in window)speechSynthesis.getVoices();
+});
+</script>
+</body></html>
