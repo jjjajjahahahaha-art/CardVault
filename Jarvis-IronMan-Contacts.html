@@ -1,0 +1,565 @@
+<!doctype html>
+<html lang="hi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#05070d">
+<title>JARVIS • Iron Man + Contacts</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#05070d;color:#eef4ff;font-family:system-ui,-apple-system,Segoe UI,sans-serif}
+.wrap{max-width:720px;margin:auto;padding:18px}
+.card{background:linear-gradient(145deg,#0c1220,#060910);border:1px solid #1e2a3f;border-radius:24px;padding:22px;box-shadow:0 20px 60px #000a}
+h1{margin:0;font-size:28px;letter-spacing:3px;background:linear-gradient(90deg,#7dd3fc,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.sub{color:#8b9bb4;margin:8px 0 16px;line-height:1.5;font-size:14px}
+.orb{width:140px;height:140px;border-radius:50%;margin:16px auto;display:grid;place-items:center;background:radial-gradient(circle,#38bdf8 0 6%,#0ea5e9 18%,#0c4a6e 50%,#020617 72%);box-shadow:0 0 40px #0ea5e966,inset 0 0 40px #38bdf833;font-size:30px;transition:all .3s}
+.orb.listening{animation:pulse 1.1s infinite}.orb.conversation{box-shadow:0 0 55px #a78bfa99,inset 0 0 35px #a78bfa44}
+@keyframes pulse{50%{transform:scale(1.08);box-shadow:0 0 70px #38bdf8cc}}
+button{border:0;border-radius:14px;padding:13px 16px;font-weight:700;cursor:pointer;transition:.2s;font-size:14px}
+.primary{width:100%;background:linear-gradient(135deg,#38bdf8,#0ea5e9);color:#020617;font-size:16px}
+.secondary{background:#111827;color:#e2e8f0}
+.row,.grid{display:grid;gap:10px;margin-top:10px}
+.row{grid-template-columns:1fr 1fr}
+.grid{grid-template-columns:repeat(2,1fr)}
+.action{background:#0f172a;color:#e2e8f0;text-align:left;font-size:13px;border:1px solid #1e293b}
+.status{padding:12px 14px;border-radius:14px;background:#0f172a;color:#94a3b8;margin:12px 0;line-height:1.45;font-size:14px;border:1px solid #1e293b}
+.log{max-height:200px;overflow:auto;display:flex;flex-direction:column;gap:7px}
+.msg{padding:10px 12px;border-radius:12px;background:#0f172a;border:1px solid #1e293b;font-size:14px}
+.you{border-left:3px solid #38bdf8}.jarvis{border-left:3px solid #a78bfa}
+.label{font-size:11px;color:#64748b;margin-bottom:2px}
+small{color:#64748b;line-height:1.5;font-size:12px}
+.mode-badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;margin-left:8px}
+.mode-off{background:#1e293b;color:#64748b}.mode-on{background:#2e1065;color:#c4b5fd}
+.contact-box{background:#0f172a;border:1px solid #1e293b;border-radius:14px;padding:12px;margin-top:12px}
+.contact-item{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #1e293b;font-size:13px}
+.contact-item:last-child{border-bottom:0}
+.contact-item button{padding:5px 10px;font-size:12px;background:#1e293b;color:#f87171;border-radius:8px}
+input.contact-input{width:100%;padding:10px;border-radius:10px;border:1px solid #334155;background:#020617;color:#fff;margin:4px 0;font-size:14px}
+</style>
+</head>
+<body>
+
+<div id="loginGate" style="position:fixed;inset:0;background:#05070d;z-index:99999;display:grid;place-items:center;padding:20px">
+  <div style="width:min(400px,100%);background:#0c1220;border:1px solid #1e2a3f;border-radius:24px;padding:28px">
+    <h2 style="margin:0 0 6px;letter-spacing:2px">J.A.R.V.I.S</h2>
+    <p style="color:#8b9bb4;margin:0 0 18px;font-size:14px">Password daal kar unlock karein.</p>
+    <input id="passInput" type="password" placeholder="Password"
+      style="width:100%;box-sizing:border-box;padding:14px;border-radius:12px;border:1px solid #334155;background:#020617;color:#fff;margin-bottom:12px">
+    <button id="unlockBtn" style="width:100%;background:linear-gradient(135deg,#38bdf8,#0ea5e9);color:#020617;padding:14px;border:0;border-radius:12px;font-weight:700">Unlock</button>
+    <div id="passError" style="color:#f87171;margin-top:12px;display:none">Incorrect password.</div>
+  </div>
+</div>
+
+<div class="wrap"><div class="card">
+  <h1>J.A.R.V.I.S <span id="modeBadge" class="mode-badge mode-off">Standby</span></h1>
+  <div class="sub">
+    “Jarvis” ek baar bolo → Conversation Mode ON<br>
+    Ab <b>sirf naam</b> bolkar Call / WhatsApp message kar sakte ho (pehle contact save karna hoga).
+  </div>
+
+  <div id="orb" class="orb">◆</div>
+  <button id="startBtn" class="primary">Initialize JARVIS</button>
+  <div id="status" class="status">Password ke baad Initialize dabao.</div>
+
+  <div class="grid">
+    <button class="action" data-cmd="Jarvis YouTube pe Arijit Singh play karo">▶ YouTube</button>
+    <button class="action" data-cmd="Jarvis WhatsApp kholo">💬 WhatsApp</button>
+    <button class="action" data-cmd="Jarvis call karo">📞 Call</button>
+    <button class="action" data-cmd="Jarvis screenshot lo">📸 Screenshot</button>
+  </div>
+
+  <div class="row" style="margin-top:10px">
+    <button class="secondary" id="stopBtn">⏹ Standby</button>
+    <button class="secondary" id="clearBtn">Clear Log</button>
+  </div>
+
+  <!-- CONTACTS SECTION -->
+  <div class="contact-box">
+    <div style="font-weight:600;margin-bottom:8px;font-size:14px">📇 Saved Contacts (Local)</div>
+    <div id="contactList"></div>
+    <div style="margin-top:10px">
+      <input class="contact-input" id="newName" placeholder="Name (e.g. Rahul)">
+      <input class="contact-input" id="newNumber" placeholder="Number (e.g. 9876543210)">
+      <button id="addContactBtn" class="primary" style="margin-top:6px;padding:10px;font-size:14px">+ Save Contact</button>
+    </div>
+    <p style="margin:8px 0 0;font-size:11px;color:#64748b">Voice se bhi save kar sakte ho: “Jarvis Rahul ka number 9876543210 save karo”</p>
+  </div>
+
+  <h3 style="margin-top:18px;font-size:14px;color:#94a3b8">Conversation</h3>
+  <div id="log" class="log"></div>
+
+  <p style="margin-top:14px"><small>
+    <b>Ab aise bolo (number ki zarurat nahi):</b><br>
+    • “Call Rahul”<br>
+    • “WhatsApp pe Priya ko message bhejo Hello kaise ho”<br>
+    • “Jarvis Rahul ka number 9876543210 save karo”<br><br>
+    Contacts is device pe localStorage mein save hote hain.
+  </small></p>
+</div></div>
+
+<script>
+const $ = id => document.getElementById(id);
+const statusEl = $("status"), log = $("log"), orb = $("orb"), modeBadge = $("modeBadge");
+
+let recognition = null, listening = false, speechEnabled = true;
+let autoListen = false, userStopped = false, jarvisStarted = false, conversationMode = false;
+let preferredVoice = null;
+
+const JARVIS_PASSWORD = "Boss@1234";
+const CONTACTS_KEY = "jarvis_contacts_v1";
+
+// ---------- CONTACTS ----------
+function loadContacts() {
+  try {
+    return JSON.parse(localStorage.getItem(CONTACTS_KEY)) || {};
+  } catch {
+    return {};
+  }
+}
+
+function saveContacts(contacts) {
+  localStorage.setItem(CONTACTS_KEY, JSON.stringify(contacts));
+  renderContacts();
+}
+
+function renderContacts() {
+  const contacts = loadContacts();
+  const list = $("contactList");
+  list.innerHTML = "";
+  const names = Object.keys(contacts);
+  if (!names.length) {
+    list.innerHTML = '<div style="color:#64748b;font-size:13px">Abhi koi contact save nahi hai.</div>';
+    return;
+  }
+  names.forEach(name => {
+    const div = document.createElement("div");
+    div.className = "contact-item";
+    div.innerHTML = `<span><b>${name}</b> • ${contacts[name]}</span>
+      <button onclick="deleteContact('${name}')">Delete</button>`;
+    list.appendChild(div);
+  });
+}
+
+window.deleteContact = function(name) {
+  const contacts = loadContacts();
+  delete contacts[name];
+  saveContacts(contacts);
+  say(`Contact ${name} deleted, Boss.`);
+};
+
+function findContact(spokenName) {
+  const contacts = loadContacts();
+  const lower = spokenName.toLowerCase().trim();
+  // exact match
+  for (const name in contacts) {
+    if (name.toLowerCase() === lower) return { name, number: contacts[name] };
+  }
+  // partial match
+  for (const name in contacts) {
+    if (name.toLowerCase().includes(lower) || lower.includes(name.toLowerCase())) {
+      return { name, number: contacts[name] };
+    }
+  }
+  return null;
+}
+
+$("addContactBtn").onclick = () => {
+  const name = $("newName").value.trim();
+  let number = $("newNumber").value.trim().replace(/[^\d+]/g, "");
+  if (!name || !number) {
+    alert("Name aur Number dono daalo");
+    return;
+  }
+  if (number.length === 10) number = "91" + number;
+  const contacts = loadContacts();
+  contacts[name] = number;
+  saveContacts(contacts);
+  $("newName").value = "";
+  $("newNumber").value = "";
+  say(`Contact ${name} saved successfully, Boss.`);
+};
+
+renderContacts();
+
+// ---------- VOICE (Force Male as much as possible) ----------
+function loadVoices() {
+  const voices = speechSynthesis.getVoices();
+  if (!voices.length) return;
+
+  // Strong priority for Male voices (Iron Man / JARVIS style)
+  const preferredMale = [
+    "Google UK English Male",
+    "Microsoft David - English (United Kingdom)",
+    "Microsoft Ryan - English (United Kingdom)",
+    "Microsoft Mark - English (United States)",
+    "Microsoft David Desktop - English (United States)",
+    "Google US English Male",
+    "Daniel",               // macOS British male
+    "Alex",                 // macOS
+    "Fred",
+    "Ralph",
+    "Microsoft Guy Online (Natural) - English (United States)",
+    "Microsoft Ryan Online (Natural) - English (United Kingdom)"
+  ];
+
+  // 1. Exact preferred male list
+  for (const name of preferredMale) {
+    const v = voices.find(voice => voice.name === name || voice.name.includes(name));
+    if (v) {
+      preferredVoice = v;
+      console.log("Male voice selected:", v.name);
+      return;
+    }
+  }
+
+  // 2. Any voice that has "Male" in the name
+  let maleVoice = voices.find(v => /male/i.test(v.name) && v.lang.startsWith("en"));
+  if (maleVoice) {
+    preferredVoice = maleVoice;
+    console.log("Male voice (by name):", maleVoice.name);
+    return;
+  }
+
+  // 3. British English voice
+  maleVoice = voices.find(v => v.lang === "en-GB" || v.lang.startsWith("en-GB"));
+  if (maleVoice) {
+    preferredVoice = maleVoice;
+    console.log("British voice selected:", maleVoice.name);
+    return;
+  }
+
+  // 4. Any English voice
+  preferredVoice = voices.find(v => v.lang.startsWith("en")) || voices[0];
+  console.log("Fallback voice:", preferredVoice?.name);
+}
+if (speechSynthesis.onvoiceschanged !== undefined) {
+  speechSynthesis.onvoiceschanged = loadVoices;
+}
+loadVoices();
+
+function esc(s){ return s.replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function addLog(who, text){
+  const d = document.createElement("div");
+  d.className = "msg " + (who === "You" ? "you" : "jarvis");
+  d.innerHTML = '<div class="label">'+who+'</div>' + esc(text);
+  log.prepend(d);
+}
+function speak(text){
+  addLog("J.A.R.V.I.S", text);
+  if (!speechEnabled || !("speechSynthesis" in window)) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = preferredVoice?.lang || "en-GB";
+  u.rate = 0.90;          // slightly slower = more formal / serious
+  u.pitch = 0.75;         // lower pitch = deeper male feel
+  u.volume = 1;
+  if (preferredVoice) u.voice = preferredVoice;
+  speechSynthesis.speak(u);
+}
+function say(text){ statusEl.textContent = text; speak(text); }
+
+function setConversationMode(on){
+  conversationMode = on;
+  modeBadge.textContent = on ? "Active" : "Standby";
+  modeBadge.className = "mode-badge " + (on ? "mode-on" : "mode-off");
+  orb.classList.toggle("conversation", on);
+}
+
+// ---------- LOGIN ----------
+function unlockJarvis(){
+  if ($("passInput").value !== JARVIS_PASSWORD) {
+    $("passError").style.display = "block";
+    return;
+  }
+  $("passError").style.display = "none";
+  $("loginGate").style.display = "none";
+}
+$("unlockBtn").onclick = unlockJarvis;
+$("passInput").addEventListener("keydown", e => { if (e.key === "Enter") unlockJarvis(); });
+
+// ---------- SPEECH ----------
+function setup(){
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { statusEl.textContent = "Speech Recognition not available."; return false; }
+  recognition = new SR();
+  recognition.lang = "hi-IN";
+  recognition.continuous = false;
+  recognition.interimResults = false;
+
+  recognition.onstart = () => {
+    listening = true;
+    orb.classList.add("listening");
+    statusEl.textContent = conversationMode ? "Listening... (Active)" : "Listening... Say Jarvis";
+  };
+  recognition.onresult = e => handle(e.results[0][0].transcript);
+  recognition.onerror = e => {
+    listening = false;
+    orb.classList.remove("listening");
+    const map = { notallowed:"Microphone blocked.", denied:"Permission denied.", network:"Network error." };
+    statusEl.textContent = map[e.error] || ("Error: " + e.error);
+  };
+  recognition.onend = () => {
+    listening = false;
+    orb.classList.remove("listening");
+    if (autoListen && !userStopped) {
+      setTimeout(() => { try { recognition.start(); } catch(e){} }, 300);
+    }
+  };
+  return true;
+}
+
+function startListening(){
+  if (!recognition) return;
+  userStopped = false;
+  autoListen = true;
+  try { recognition.start(); } catch(e){}
+}
+
+// ---------- SCREENSHOT ----------
+async function takeScreenshot(){
+  if (!navigator.mediaDevices?.getDisplayMedia) {
+    say("Screen capture not supported.");
+    return;
+  }
+  try {
+    say("Please allow screen capture.");
+    const stream = await navigator.mediaDevices.getDisplayMedia({ video:true, audio:false });
+    const video = document.createElement("video");
+    video.srcObject = stream; video.muted = true;
+    await video.play();
+    await new Promise(r => video.readyState >= 2 ? r() : (video.onloadedmetadata = r));
+    await new Promise(requestAnimationFrame);
+    const canvas = document.createElement("canvas");
+    canvas.width = video.videoWidth || 1280;
+    canvas.height = video.videoHeight || 720;
+    canvas.getContext("2d").drawImage(video, 0, 0);
+    stream.getTracks().forEach(t => t.stop());
+    canvas.toBlob(blob => {
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "JARVIS-Screenshot-" + Date.now() + ".png";
+      a.click();
+      URL.revokeObjectURL(url);
+      say("Screenshot saved, Boss.");
+    }, "image/png");
+  } catch(e) {
+    say(e.name === "NotAllowedError" ? "Screen capture cancelled." : "Screenshot failed.");
+  }
+}
+
+// ---------- MAIN HANDLER ----------
+function handle(raw){
+  const text = raw.trim();
+  if (!text) return;
+  addLog("You", text);
+  const t = text.toLowerCase();
+
+  const hasWake = /jarvis|जार्विस|baby|बेबी|जारविस/.test(t);
+
+  if (!conversationMode && !hasWake) {
+    say("Please say Jarvis first to activate me.");
+    return;
+  }
+
+  if (hasWake) {
+    setConversationMode(true);
+    if (t.replace(/jarvis|जार्विस|baby|बेबी|जारविस/gi,"").trim().length < 3) {
+      say("At your service, Boss.");
+      return;
+    }
+  }
+
+  // SLEEP
+  if (/रुको|stop|बंद|band|chup|चुप|sleep|standby|खत्म|goodbye|bye/.test(t)) {
+    speechSynthesis.cancel();
+    setConversationMode(false);
+    say("Going to standby mode, Boss.");
+    return;
+  }
+
+  // SAVE CONTACT by voice: "Rahul ka number 9876543210 save karo"
+  if (/save|सेव|save karo|number save|contact save|नंबर सेव/.test(t)) {
+    const numMatch = t.match(/(\d{10,13})/);
+    if (numMatch) {
+      let number = numMatch[1];
+      if (number.length === 10) number = "91" + number;
+
+      // extract name (words before "ka number" or before the digits)
+      let namePart = t.replace(/jarvis|जार्विस|baby|बेबी/gi,"")
+                      .replace(/ka number|की नंबर|number|नंबर|save karo|सेव करो|save|contact/gi," ")
+                      .replace(numMatch[0], "")
+                      .replace(/\s+/g," ").trim();
+
+      // clean common words
+      namePart = namePart.replace(/ka|ki|ke|ko|se|the|a|an/gi,"").trim();
+      const name = namePart.split(" ").filter(w => w.length > 1).slice(0,2).join(" ") || "Unknown";
+
+      if (name && name !== "Unknown") {
+        const contacts = loadContacts();
+        contacts[name] = number;
+        saveContacts(contacts);
+        say(`Contact ${name} with number ${number} saved, Boss.`);
+      } else {
+        say("Please clearly say the name and number. Example: Rahul ka number 9876543210 save karo");
+      }
+    } else {
+      say("Number nahi mila. Example: Rahul ka number 9876543210 save karo");
+    }
+    return;
+  }
+
+  // CALL by name or number
+  if (/call|कॉल|फोन|phone|dial/.test(t)) {
+    // first try number
+    const numMatch = t.match(/(\+?\d[\d\s\-]{8,15}\d)/);
+    if (numMatch) {
+      let number = numMatch[1].replace(/[\s\-]/g,"");
+      say("Calling " + number);
+      setTimeout(() => location.href = "tel:" + number, 600);
+      return;
+    }
+
+    // try name
+    const clean = t.replace(/jarvis|जार्विस|baby|बेबी|call|कॉल|फोन|phone|karo|ko|se|the/gi," ").replace(/\s+/g," ").trim();
+    const found = findContact(clean);
+    if (found) {
+      say(`Calling ${found.name}, Boss.`);
+      setTimeout(() => location.href = "tel:" + found.number, 700);
+    } else {
+      say(`Contact "${clean}" nahi mila. Pehle save karein ya number boliye.`);
+    }
+    return;
+  }
+
+  // WHATSAPP by name or number + optional message
+  if (/whatsapp|व्हाट्सऐप|व्हाट्सएप|message|मैसेज|msg|text/.test(t)) {
+    let number = null;
+    let contactName = null;
+    let msg = "";
+
+    // extract message
+    const msgMatch = t.match(/(?:message|मैसेज|msg|bhejo|भेजो|text|likho|लिखो)\s+(.+)/i);
+    if (msgMatch) msg = msgMatch[1].replace(/jarvis|जार्विस|baby|बेबी/gi,"").trim();
+
+    // try number first
+    const numMatch = t.match(/(\+?\d[\d\s\-]{8,15}\d)/);
+    if (numMatch) {
+      number = numMatch[1].replace(/[\s\-]/g,"");
+      if (number.length === 10) number = "91" + number;
+    } else {
+      // try name
+      let namePart = t.replace(/jarvis|जार्विस|baby|बेबी|whatsapp|व्हाट्सऐप|व्हाट्सएप|pe|par|ko|message|मैसेज|msg|bhejo|भेजो|text|likho|लिखो|karo|open|kholo/gi," ")
+                      .replace(/\s+/g," ").trim();
+      if (msg) namePart = namePart.replace(msg, "").trim();
+
+      const found = findContact(namePart);
+      if (found) {
+        number = found.number;
+        contactName = found.name;
+      }
+    }
+
+    if (number) {
+      if (msg) {
+        say(contactName ? `Sending message to ${contactName}` : "Opening WhatsApp with message");
+        setTimeout(() => location.href = `https://wa.me/${number}?text=${encodeURIComponent(msg)}`, 700);
+      } else {
+        say(contactName ? `Opening WhatsApp chat with ${contactName}` : "Opening WhatsApp");
+        setTimeout(() => location.href = `https://wa.me/${number}`, 700);
+      }
+    } else {
+      say("Contact nahi mila. Pehle naam save karein ya number boliye. Example: WhatsApp pe Rahul ko message bhejo Hello");
+    }
+    return;
+  }
+
+  // YOUTUBE
+  if (/youtube|यूट्यूब/.test(t)) {
+    let q = t.replace(/jarvis|जार्विस|baby|बेबी|youtube|यूट्यूब|pe|par|play|chalao|gana|song|video/gi," ").replace(/\s+/g," ").trim() || "music";
+    say("Playing " + q + " on YouTube");
+    setTimeout(() => location.href = "https://www.youtube.com/results?search_query=" + encodeURIComponent(q), 700);
+    return;
+  }
+
+  // SPOTIFY
+  if (/spotify|स्पॉटिफाई/.test(t)) {
+    let q = t.replace(/jarvis|जार्विस|baby|बेबी|spotify|स्पॉटिफाई|pe|par|play|chalao|gana|song/gi," ").replace(/\s+/g," ").trim() || "music";
+    say("Searching " + q + " on Spotify");
+    setTimeout(() => location.href = "https://open.spotify.com/search/" + encodeURIComponent(q), 700);
+    return;
+  }
+
+  // SCREENSHOT
+  if (/screenshot|स्क्रीनशॉट|screen shot/.test(t)) {
+    takeScreenshot();
+    return;
+  }
+
+  // TIME
+  if (/time|समय|kitna baja|what's the time/.test(t)) {
+    const timeStr = new Date().toLocaleTimeString("en-IN", { hour:"numeric", minute:"2-digit", hour12:true });
+    say("The time is " + timeStr + ", Boss.");
+    return;
+  }
+
+  // DATE
+  if (/date|तारीख|aaj ki date|today/.test(t)) {
+    const dateStr = new Date().toLocaleDateString("en-IN", { weekday:"long", year:"numeric", month:"long", day:"numeric" });
+    say("Today is " + dateStr);
+    return;
+  }
+
+  // GREETING
+  if (/hello|hi |हैलो|namaste|kaise ho|how are you/.test(t)) {
+    say("Always at your service, Boss.");
+    return;
+  }
+
+  // GENERAL SEARCH
+  const cleanQuery = text.replace(/jarvis|जार्विस|baby|बेबी/gi,"").trim();
+  if (cleanQuery.length > 3) {
+    say("Searching that for you.");
+    setTimeout(() => location.href = "https://www.google.com/search?q=" + encodeURIComponent(cleanQuery), 800);
+    return;
+  }
+
+  say("I'm listening, Boss.");
+}
+
+// ---------- BUTTONS ----------
+$("startBtn").onclick = async () => {
+  if (jarvisStarted) {
+    if (!listening) startListening();
+    return;
+  }
+  try {
+    const s = await navigator.mediaDevices.getUserMedia({ audio:true });
+    s.getTracks().forEach(t => t.stop());
+  } catch {
+    say("Microphone permission required.");
+    return;
+  }
+  if (!setup()) return;
+  jarvisStarted = true;
+  $("startBtn").textContent = "JARVIS Online";
+  $("startBtn").style.background = "linear-gradient(135deg,#34d399,#10b981)";
+  startListening();
+  say("JARVIS online. At your service, Boss.");
+};
+
+$("stopBtn").onclick = () => {
+  speechSynthesis.cancel();
+  userStopped = true;
+  autoListen = false;
+  setConversationMode(false);
+  if (recognition && listening) recognition.stop();
+  statusEl.textContent = "Standby mode.";
+  say("Entering standby mode.");
+};
+
+$("clearBtn").onclick = () => log.innerHTML = "";
+document.querySelectorAll("[data-cmd]").forEach(b => b.onclick = () => handle(b.dataset.cmd));
+</script>
+</body>
+</html>
